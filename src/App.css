@@ -1,0 +1,175 @@
+.root {
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+}
+
+.navigation-bar {
+    display: flex;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 50px;
+    justify-content: center;
+    align-items: center;
+    background-color: #7e56bf;
+    color: white;
+}
+
+.control-bar {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 50px;
+}
+
+.pane-view {
+    display: flex;
+    position: fixed;
+    top: 50px;
+    bottom: 50px;
+    width: 100%;
+}
+
+.editor {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.pane-select-button {
+    background-color: #734ab4;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 0px 10px;
+    cursor: pointer;
+}
+
+.pane-select-button:hover {
+    background-color: #5f3a9f;
+}
+
+.pane-select-button:focus {
+    outline: none;
+}
+
+.editor-pane {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.blockly-workspace {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.control-button {
+    background-color: #734ab4;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 0px 10px;
+    cursor: pointer;
+}
+
+.control-button:hover {
+    background-color: #5f3a9f;
+}
+
+.control-button:focus {
+    outline: none;
+}
+
+.split-pane {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.splitter {
+    background-color: #734ab4;
+    color: white;
+    border: none;
+    min-width: 3px;
+    min-height: 3px;
+    cursor: ew-resize;
+}
+
+.splitter:hover {
+    background-color: #5f3a9f;
+}
+
+.splitter:focus {
+    outline: none;
+}
+
+.console {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: #222;
+    color: white;
+}
+
+.control-connected {
+    display: flex;
+    background-color: #008000;
+    height: 100%;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.control-disconnected {
+    display: flex;
+    background-color: #b00000;
+    height: 100%;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    border: none;
+    cursor: not-allowed;
+}
+
+.connected-button {
+    background-color: #007000;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 0px 10px;
+    cursor: pointer;
+}
+
+.connected-button:hover {
+    background-color: #006000;
+}
+
+.connected-button:focus {
+    outline: none;
+}
+
+.disconnected-button {
+    background-color: #a00000;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 0px 10px;
+    cursor: pointer;
+}
+
+.disconnected-button:hover {
+    background-color: #900000;
+}
+
+.disconnected-button:focus {
+    outline: none;
+}
