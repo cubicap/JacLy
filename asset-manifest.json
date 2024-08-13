@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/JacLy/static/css/main.1aa9521a.css",
+    "main.js": "/JacLy/static/js/main.9c0973ae.js",
+    "static/js/453.a5ac9c5b.chunk.js": "/JacLy/static/js/453.a5ac9c5b.chunk.js",
+    "index.html": "/JacLy/index.html",
+    "main.1aa9521a.css.map": "/JacLy/static/css/main.1aa9521a.css.map",
+    "main.9c0973ae.js.map": "/JacLy/static/js/main.9c0973ae.js.map",
+    "453.a5ac9c5b.chunk.js.map": "/JacLy/static/js/453.a5ac9c5b.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1aa9521a.css",
+    "static/js/main.9c0973ae.js"
+  ]
+}
