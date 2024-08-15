@@ -175,3 +175,23 @@
 .disconnected-button:focus {
     outline: none;
 }
+
+.navigation-bar-title {
+    font-size: 1.5em;
+    position: absolute;
+    left: 12px;
+}
+
+.nav-github-link {
+    position: absolute;
+    right: 12px;
+}
+
+.nav-github-link a {
+    color: white;
+    text-decoration: none;
+}
+
+.nav-github-link a:hover {
+    text-decoration: underline;
+}

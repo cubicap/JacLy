@@ -90,6 +90,52 @@ export class ControlBar extends Component<ControlBarProps> {
         this.uploading = false;
     }
 
+    async stop() {
+        if (!this.connected || !this.device) {
+            return;
+        }
+
+        try {
+            await this.device.controller.lock().catch((err) => {
+                console.log("Error locking device: " + err + "\n");
+            });
+
+            await this.device.controller.stop();
+
+            await this.device.controller.unlock().catch((err) => {
+                console.log("Error unlocking device: " + err + "\n");
+            });
+        } catch (e) {
+            alert("Failed to stop program: " + e);
+        }
+    }
+
+    async restart() {
+        if (!this.connected || !this.device) {
+            return;
+        }
+
+        try {
+            await this.device.controller.lock().catch((err) => {
+                console.log("Error locking device: " + err + "\n");
+            });
+
+            await this.device.controller.stop().catch((err) => {
+                console.log("Error stopping device: " + err);
+            });
+
+            await this.device.controller.start("index.js").catch((err) => {
+                console.log("Error starting program: " + err);
+            });
+
+            await this.device.controller.unlock().catch((err) => {
+                console.log("Error unlocking device: " + err + "\n");
+            });
+        } catch (e) {
+            alert("Failed to restart program: " + e);
+        }
+    }
+
     getContent() {
         if (this.connected) {
             return (
@@ -97,6 +143,8 @@ export class ControlBar extends Component<ControlBarProps> {
                     <button onClick={ () => this.disconnect() } className="connected-button">Disconnect</button>
                     <button onClick={ () => this.upload() } className="connected-button">Upload</button>
                     <button onClick={ () => this.version() } className="connected-button">Version</button>
+                    <button onClick={ () => this.stop() } className="connected-button">Stop</button>
+                    <button onClick={ () => this.restart() } className="connected-button">Restart</button>
                 </div>
             );
         }
