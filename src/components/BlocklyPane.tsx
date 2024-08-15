@@ -11,7 +11,7 @@ export interface BlocklyPaneProps {  // eslint-disable-line @typescript-eslint/n
 }
 
 
-const sourceCode = `
+const timerDts = `
 /**
  * Returns a promise that resolves after the specified time.
  * @param ms The number of milliseconds to wait before resolving the promise.
@@ -45,6 +45,16 @@ declare function clearTimeout(id: number): void;
 declare function clearInterval(id: number): void;
 `;
 
+const consoleDts = `
+declare const console: {
+    debug(arg: any): void;
+    log(arg: any): void;
+    warn(arg: any): void;
+    info(arg: any): void;
+    error(arg: any): void;
+}
+`;
+
 const defaultJson = "{}";
 const toolbox = getToolbox([
     {
@@ -60,8 +70,15 @@ const toolbox = getToolbox([
         name: "Time",
         toolboxitemid: "time",
         colour: "#FFD500",
-        blocks: getBlocks(sourceCode)
+        blocks: getBlocks(timerDts)
     },
+    {
+        kind: "category",
+        name: "Console",
+        toolboxitemid: "console",
+        colour: "#FFD500",
+        blocks: getBlocks(consoleDts)
+    }
 ]);
 console.log(toolbox);
 
