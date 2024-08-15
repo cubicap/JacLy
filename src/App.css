@@ -114,6 +114,8 @@
     overflow: auto;
     background-color: #222;
     color: white;
+    font-family: monospace;
+    font-size: 1.2em;
 }
 
 .control-connected {

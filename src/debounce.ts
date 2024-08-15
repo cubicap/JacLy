@@ -18,7 +18,7 @@ export class Debounce {
             this.callback();
         }, this.time);
     }
-};
+}
 
 export class ReduceRate {
     private timeout: NodeJS.Timeout | null;

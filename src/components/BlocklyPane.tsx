@@ -1,14 +1,15 @@
+/* eslint quotes: 0 */
 import React, { Component } from "react";
 import { BlocklyWorkspace, WorkspaceSvg } from "react-blockly";
 import { javascriptGenerator } from "blockly/javascript";
 import { svgResize } from "blockly";
 
-export interface BlocklyPaneProps {
+export interface BlocklyPaneProps {  // eslint-disable-line @typescript-eslint/no-empty-interface
 
 }
 
 
-const defaultJson = "{\"blocks\":{\"languageVersion\":0,\"blocks\":[{\"type\":\"variables_set\",\"id\":\"}1_p%V(HNyTe5C:mf~e1\",\"x\":197,\"y\":56,\"fields\":{\"VAR\":{\"id\":\"C(8;cYCF}~vSgkxzJ+{O\"}},\"inputs\":{\"VALUE\":{\"block\":{\"type\":\"math_number\",\"id\":\"VDY%P}5af(~Ez)TOfngK\",\"fields\":{\"NUM\":0}}}},\"next\":{\"block\":{\"type\":\"set_interval\",\"id\":\"jVN+X=B5Nj$QTT4^T/Rm\",\"inputs\":{\"INTERVAL\":{\"shadow\":{\"type\":\"math_number\",\"id\":\"|:7NXb@w|PQMij.0B!CL\",\"fields\":{\"NUM\":500}},\"block\":{\"type\":\"math_number\",\"id\":\"{ma][[.bDXk{1b$1:{wv\",\"fields\":{\"NUM\":500}}},\"CODE\":{\"block\":{\"type\":\"console\",\"id\":\"vd{u/{gQGNX@10O?0^`e\",\"fields\":{\"TYPE\":\"log\"},\"inputs\":{\"TEXT\":{\"shadow\":{\"type\":\"text\",\"id\":\"3B;mEtby0w@V..@F-z{H\",\"fields\":{\"TEXT\":\"abc\"}},\"block\":{\"type\":\"text_join\",\"id\":\"pI68/n|TwP?+.HW!m)~D\",\"extraState\":{\"itemCount\":2},\"inputs\":{\"ADD0\":{\"block\":{\"type\":\"text\",\"id\":\"wrtNHiKtON%B38gE^o=y\",\"fields\":{\"TEXT\":\"JacLy - index: \"}}},\"ADD1\":{\"block\":{\"type\":\"variables_get\",\"id\":\"X94KpDGK,zGh]#o]ZIFH\",\"fields\":{\"VAR\":{\"id\":\"C(8;cYCF}~vSgkxzJ+{O\"}}}}}}}},\"next\":{\"block\":{\"type\":\"math_change\",\"id\":\"1/U093lt?YL?,dR6^I^z\",\"fields\":{\"VAR\":{\"id\":\"C(8;cYCF}~vSgkxzJ+{O\"}},\"inputs\":{\"DELTA\":{\"shadow\":{\"type\":\"math_number\",\"id\":\"uL[6zYZsdx%2#+v[CWI!\",\"fields\":{\"NUM\":1}},\"block\":{\"type\":\"math_number\",\"id\":\"RZTdhlLJtqGkDu$Pp}VO\",\"fields\":{\"NUM\":1}}}}}}}}}}}}]},\"variables\":[{\"name\":\"i\",\"id\":\"C(8;cYCF}~vSgkxzJ+{O\"}]}"
+const defaultJson = "{\"blocks\":{\"languageVersion\":0,\"blocks\":[{\"type\":\"variables_set\",\"id\":\"}1_p%V(HNyTe5C:mf~e1\",\"x\":197,\"y\":56,\"fields\":{\"VAR\":{\"id\":\"C(8;cYCF}~vSgkxzJ+{O\"}},\"inputs\":{\"VALUE\":{\"block\":{\"type\":\"math_number\",\"id\":\"VDY%P}5af(~Ez)TOfngK\",\"fields\":{\"NUM\":0}}}},\"next\":{\"block\":{\"type\":\"set_interval\",\"id\":\"jVN+X=B5Nj$QTT4^T/Rm\",\"inputs\":{\"INTERVAL\":{\"shadow\":{\"type\":\"math_number\",\"id\":\"|:7NXb@w|PQMij.0B!CL\",\"fields\":{\"NUM\":500}},\"block\":{\"type\":\"math_number\",\"id\":\"{ma][[.bDXk{1b$1:{wv\",\"fields\":{\"NUM\":500}}},\"CODE\":{\"block\":{\"type\":\"console\",\"id\":\"vd{u/{gQGNX@10O?0^`e\",\"fields\":{\"TYPE\":\"log\"},\"inputs\":{\"TEXT\":{\"shadow\":{\"type\":\"text\",\"id\":\"3B;mEtby0w@V..@F-z{H\",\"fields\":{\"TEXT\":\"abc\"}},\"block\":{\"type\":\"text_join\",\"id\":\"pI68/n|TwP?+.HW!m)~D\",\"extraState\":{\"itemCount\":2},\"inputs\":{\"ADD0\":{\"block\":{\"type\":\"text\",\"id\":\"wrtNHiKtON%B38gE^o=y\",\"fields\":{\"TEXT\":\"JacLy - index: \"}}},\"ADD1\":{\"block\":{\"type\":\"variables_get\",\"id\":\"X94KpDGK,zGh]#o]ZIFH\",\"fields\":{\"VAR\":{\"id\":\"C(8;cYCF}~vSgkxzJ+{O\"}}}}}}}},\"next\":{\"block\":{\"type\":\"math_change\",\"id\":\"1/U093lt?YL?,dR6^I^z\",\"fields\":{\"VAR\":{\"id\":\"C(8;cYCF}~vSgkxzJ+{O\"}},\"inputs\":{\"DELTA\":{\"shadow\":{\"type\":\"math_number\",\"id\":\"uL[6zYZsdx%2#+v[CWI!\",\"fields\":{\"NUM\":1}},\"block\":{\"type\":\"math_number\",\"id\":\"RZTdhlLJtqGkDu$Pp}VO\",\"fields\":{\"NUM\":1}}}}}}}}}}}}]},\"variables\":[{\"name\":\"i\",\"id\":\"C(8;cYCF}~vSgkxzJ+{O\"}]}";
 export const INITIAL_TOOLBOX_JSON = {
     kind: "categoryToolbox",
     contents: [
@@ -643,7 +644,10 @@ export class BlocklyPane extends Component<BlocklyPaneProps> {
 
     getJS(): string {
         try {
-            let code = javascriptGenerator.workspaceToCode(this.workspace!);
+            if (!this.workspace) {
+                return "";
+            }
+            let code = javascriptGenerator.workspaceToCode(this.workspace);
             return code;
         }
         catch (e) {
@@ -653,7 +657,9 @@ export class BlocklyPane extends Component<BlocklyPaneProps> {
     }
 
     resize() {
-        svgResize(this.workspace!);
+        if (this.workspace) {
+            svgResize(this.workspace);
+        }
     }
 
     render() {
@@ -683,4 +689,4 @@ export class BlocklyPane extends Component<BlocklyPaneProps> {
             />
         );
     }
-};
+}

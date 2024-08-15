@@ -1,4 +1,4 @@
 export enum Pane {
-    Text = 'text',
-    Blocks = 'blocks'
+    Text = "text",
+    Blocks = "blocks"
 }

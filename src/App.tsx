@@ -1,9 +1,9 @@
-import './App.css';
-import { Root } from './components/Root';
+import "./App.css";
+import { Root } from "./components/Root";
 
 
 function App() {
-    return <Root />
+    return <Root />;
 }
 
 export default App;

@@ -1,6 +1,6 @@
-import React, { Component } from 'react';
+import React, { Component } from "react";
 
-export interface ConsoleProps {
+export interface ConsoleProps {  // eslint-disable-line @typescript-eslint/no-empty-interface
 
 }
 
@@ -16,7 +16,7 @@ export class Console extends Component<ConsoleProps> {
         if (this.console.current === null) {
             return;
         }
-        this.console.current.innerHTML += text.replace(/\n/g, '<br>');
+        this.console.current.innerHTML += text.replace(/\n/g, "<br>");
     }
 
     render() {

@@ -1,11 +1,11 @@
-import React, { Component, RefObject } from 'react';
-import { BlocklyPane } from './BlocklyPane';
-import { TextPane } from './TextPane';
-import { Pane } from './types';
-import { ReduceRate } from '../debounce';
+import React, { Component, RefObject } from "react";
+import { BlocklyPane } from "./BlocklyPane";
+import { TextPane } from "./TextPane";
+import { Pane } from "./types";
+import { ReduceRate } from "../debounce";
 
 
-export interface EditorProps {
+export interface EditorProps {  // eslint-disable-line @typescript-eslint/no-empty-interface
 
 }
 
@@ -42,7 +42,7 @@ export class Editor extends Component<EditorProps> {
         if (pane === Pane.Text) {
             let code = this.blocklyEditor.current?.getJS();
             if (code === undefined) {
-                code = '';
+                code = "";
             }
             this.textEditor.current?.setJS(code);
         } else {
@@ -53,12 +53,12 @@ export class Editor extends Component<EditorProps> {
     getJS(): string {
         if (this.state.currentPane === Pane.Text) {
             if (this.textEditor.current === null) {
-                return '';
+                return "";
             }
             return this.textEditor.current.getJS();
         } else {
             if (this.blocklyEditor.current === null) {
-                return '';
+                return "";
             }
             return this.blocklyEditor.current.getJS();
         }
@@ -79,8 +79,8 @@ export class Editor extends Component<EditorProps> {
     render() {
         return (
             <div className="editor">
-                <div className='editor-pane' style={{ display: this.state.currentPane === Pane.Text ? undefined : 'none' }} > <TextPane ref={this.textEditor} /> </div>
-                <div className='editor-pane' style={{ display: this.state.currentPane === Pane.Blocks ? undefined : 'none' }} > <BlocklyPane ref={this.blocklyEditor} /> </div>
+                <div className="editor-pane" style={{ display: this.state.currentPane === Pane.Text ? undefined : "none" }} > <TextPane ref={this.textEditor} /> </div>
+                <div className="editor-pane" style={{ display: this.state.currentPane === Pane.Blocks ? undefined : "none" }} > <BlocklyPane ref={this.blocklyEditor} /> </div>
             </div>
         );
     }

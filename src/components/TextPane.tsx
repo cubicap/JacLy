@@ -1,8 +1,8 @@
 import React, { Component } from "react";
-import { editor } from 'monaco-editor';
+import { editor } from "monaco-editor";
 import Editor from "@monaco-editor/react";
 
-export interface TextPaneProps {
+export interface TextPaneProps {  // eslint-disable-line @typescript-eslint/no-empty-interface
 
 }
 
@@ -12,7 +12,7 @@ export class TextPane extends Component<TextPaneProps> {
 
     getJS(): string {
         if (this.monacoEditor === null) {
-            return '';
+            return "";
         }
         return this.monacoEditor.getValue();
     }
@@ -36,10 +36,10 @@ export class TextPane extends Component<TextPaneProps> {
                     minimap: {
                         enabled: false
                     },
-                    readOnly: true
+                    readOnly: false
                 }}
-                onMount={ (editor, monaco) => { this.monacoEditor = editor; } }
+                onMount={ (editor) => { this.monacoEditor = editor; } }
             />
         );
     }
-};
+}
