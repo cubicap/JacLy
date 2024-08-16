@@ -1,7 +1,7 @@
 import { CustomCategory, ToolboxEntries } from "./types";
 import * as Blockly from "blockly/core";
 
-export function getToolbox(customEntries?: ToolboxEntries) {
+export function createToolbox(customEntries?: ToolboxEntries) {
     let toolbox = {
         kind: "categoryToolbox",
         contents: [

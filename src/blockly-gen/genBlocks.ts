@@ -42,6 +42,56 @@ type Var = {
     type: Type;
 };
 
+type Module = {
+    name: string;
+    members: Var[];
+}
+
+function simpleName(type: string): string {
+    switch (type) {
+    case "number":
+        return "Number";
+    case "string":
+        return "String";
+    case "boolean":
+        return "Boolean";
+    default:
+        return type;
+    }
+}
+
+function simpleCheck(type: string): string | null {
+    switch (type) {
+    case "any":
+        return null;
+    case "void":
+        throw new Error("Invalid type: void");
+    default:
+        return simpleName(type);
+    }
+}
+
+function typeToString(type: Type): string {
+    switch (type.kind) {
+    case "simple":
+        return simpleName(type.type as string) ?? "any";
+    case "promise":
+        return `Promise<${typeToString(type.type as Type)}>`;
+    case "array":
+        return `${typeToString(type.type as Type)}[]`;
+    case "object":
+        return "{\n" + (type.type as ObjectType).properties.map((prop) => {
+            return `${prop.name}: ${typeToString(prop.type)},`;
+        }).join("\n") + "\n}";
+    case "function":
+        return `(${(type.type as FuncType).args.map((arg) => {
+            return `${arg.name}: ${typeToString(arg.type)}`;
+        }).join(", ")}) => ${typeToString((type.type as FuncType).returnType)}`;
+    default:
+        throw new Error("Unsupported type: " + type.kind);
+    }
+}
+
 function simple(type: string): Type {
     return { kind: "simple", type };
 }
@@ -64,7 +114,10 @@ function getTypeReference(node: ts.TypeReferenceNode): Type {
         }
         return promise(getType(node.typeArguments[0]));
     default:
-        throw new Error("Unsupported type reference: " + typeName);
+        if (node.typeArguments !== undefined) {
+            throw new Error("Type reference has type arguments");
+        }
+        return simple(typeName);
     }
 }
 
@@ -234,10 +287,11 @@ function getVariable(node: ts.VariableStatement): Var {
 }
 
 function addArgument(bloc: Blockly.Block, arg: Argument) {
+    console.log(arg);
     switch (arg.type.kind) {
     case "simple":
         bloc.appendValueInput(arg.name)
-            .setCheck(null)
+            .setCheck(simpleCheck(arg.type.type as string))
             .appendField(arg.name);
         break;
     case "promise": case "array": case "object":
@@ -255,7 +309,7 @@ function addArgument(bloc: Blockly.Block, arg: Argument) {
     }
 }
 
-function addGlobalFunctionBlock(blocks, func: Func) {
+function addGlobalFunctionBlock(blocks: BlockDefinition[], func: Func) {
     let name = func.name;
     const block: BlockDefinition = {
         type: name,
@@ -267,6 +321,9 @@ function addGlobalFunctionBlock(blocks, func: Func) {
             }
             bloc.setNextStatement(true);
             bloc.setPreviousStatement(true);
+            if (!(func.type.returnType.kind === "simple" && func.type.returnType.type === "void")) {
+                bloc.setOutput(true, typeToString(func.type.returnType));
+            }
             bloc.setColour("404040");
         }
     };
@@ -284,7 +341,7 @@ function addGlobalFunctionBlock(blocks, func: Func) {
                 break;
             case "function": {
                 let fn = arg.type.type as unknown as FuncType;
-                let code = "((";
+                let code = "(";
                 let first = true;
                 for (let a of fn.args) {
                     if (!first) {
@@ -295,7 +352,7 @@ function addGlobalFunctionBlock(blocks, func: Func) {
                 }
                 code += ") => {\n";
                 code += generator.statementToCode(block, arg.name);
-                code += "})";
+                code += "}";
                 args.push(code);
             } break;
             }
@@ -304,7 +361,37 @@ function addGlobalFunctionBlock(blocks, func: Func) {
     };
 }
 
-function addGlobalObjectBlock(blocks, obj: ObjectType, prefix = "") {
+function addGlobalSimpleBlock(blocks: BlockDefinition[], name: string, type: string) {
+    const block: BlockDefinition = {
+        type: name,
+        init: (bloc) => {
+            bloc.appendDummyInput()
+                .appendField(name);
+            bloc.setOutput(true, type);
+            bloc.setColour("404040");
+        }
+    };
+    blocks.push(block);
+
+    javascriptGenerator.forBlock[name] = (block: Blockly.Block, generator: JavascriptGenerator) => {
+        return `(${name})`;
+    };
+}
+
+function addGlobalVariableBlock(blocks: BlockDefinition[], var_: Var) {
+    switch (var_.type.kind) {
+    case "simple":
+        addGlobalSimpleBlock(blocks, var_.name, var_.type.type as string);
+        break;
+    case "object":
+        addGlobalObjectBlock(blocks, var_.type.type as ObjectType, var_.name);
+        break;
+    default:
+        throw new Error("Unsupported variable type: " + var_.type.kind);
+    }
+}
+
+function addGlobalObjectBlock(blocks: BlockDefinition[], obj: ObjectType, prefix = "") {
     for (let prop of obj.properties) {
         switch (prop.type.kind) {
         case "function":
@@ -314,8 +401,62 @@ function addGlobalObjectBlock(blocks, obj: ObjectType, prefix = "") {
                 type: prop.type.type as FuncType
             });
             break;
+        case "simple":
+            addGlobalVariableBlock(blocks, {
+                name: prefix + "." + prop.name,
+                type: prop.type
+            });
+            break;
         default:
             throw new Error("Unsupported property type: " + prop.type.kind);
+        }
+    }
+}
+
+function getModule(node: ts.ModuleDeclaration): Module {
+    if (node.name === undefined) {
+        throw new Error("Module has no name");
+    }
+    if (node.body === undefined) {
+        throw new Error("Module has no body");
+    }
+    if (node.body.kind !== ts.SyntaxKind.ModuleBlock) {
+        throw new Error("Module body is not a block");
+    }
+
+    const name = node.name.text;
+    const members: Var[] = [];
+    node.body.statements.forEach((member) => {
+        if (member.kind === ts.SyntaxKind.VariableStatement) {
+            members.push(getVariable(member as ts.VariableStatement));
+        }
+        else if (member.kind === ts.SyntaxKind.FunctionDeclaration) {
+            console.log(member);
+            const func = getFunction(member as ts.FunctionDeclaration);
+            members.push({
+                name: func.name,
+                type: { kind: "function", type: func.type }
+            });
+        }
+    });
+
+    return { name, members };
+}
+
+function addModuleBlock(blocks: BlockDefinition[], mod: Module, name: string) {
+    for (let member of mod.members) {
+        switch (member.type.kind) {
+        case "function":
+            addGlobalFunctionBlock(blocks, {
+                name: name + "." + member.name,
+                type: member.type.type as FuncType
+            });
+            break;
+        case "object":
+            addGlobalObjectBlock(blocks, member.type.type as ObjectType, name + "." + member.name);
+            break;
+        default:
+            throw new Error("Unsupported member type: " + member.type.kind);
         }
     }
 }
@@ -333,13 +474,11 @@ export function getBlocks(dts: string): BlockDefinition[] {
         }
         else if (node.kind  === ts.SyntaxKind.VariableStatement) {
             const vars = getVariable(node as ts.VariableStatement);
-            switch (vars.type.kind) {
-            case "object":
-                addGlobalObjectBlock(blocks, vars.type.type as ObjectType, vars.name);
-                break;
-            default:
-                throw new Error("Unsupported variable type: " + vars.type.kind);
-            }
+            addGlobalVariableBlock(blocks, vars);
+        }
+        else if (node.kind === ts.SyntaxKind.ModuleDeclaration) {
+            const mod = getModule(node as ts.ModuleDeclaration);
+            addModuleBlock(blocks, mod, mod.name);
         }
         else {
             console.log("Unsupported node: " + ts.SyntaxKind[node.kind]);
