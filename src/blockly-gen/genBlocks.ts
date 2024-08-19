@@ -14,7 +14,19 @@ function getUniqueName(name: string): string {
 
 
 function getAst(dts: string): ts.SourceFile {
-    return ts.createSourceFile("test.d.ts", dts, ts.ScriptTarget.ES2020);
+    return ts.createSourceFile("in.d.ts", dts, {
+        languageVersion: ts.ScriptTarget.ES2020,
+        jsDocParsingMode: ts.JSDocParsingMode.ParseAll
+    }, undefined, ts.ScriptKind.TS);
+}
+
+function getJsDoc(node: ts.Node): string | undefined {
+    let docs = (node as any).jsDoc;
+    if (docs === undefined) {
+        return undefined;
+    }
+    let doc = docs.find((doc: any) => doc.comment.startsWith("#jacly"));
+    return doc?.comment;
 }
 
 type Type = {
@@ -34,6 +46,7 @@ type ObjectType = {
 type FuncType = {
     args: Argument[];
     returnType: Type;
+    blockDesign?: string;
 };
 
 type Literal = {
@@ -292,7 +305,7 @@ function getFunctionSignature(node: ts.SignatureDeclaration): FuncType {
         returnType = getType(node.type);
     }
 
-    return { args, returnType };
+    return { args, returnType, blockDesign: getJsDoc(node) };
 }
 
 function getFunction(node: ts.FunctionDeclaration): Func {
@@ -301,7 +314,8 @@ function getFunction(node: ts.FunctionDeclaration): Func {
         throw new Error("Function has no name");
     }
 
-    return { name, type: getFunctionSignature(node) };
+    let type = getFunctionSignature(node);
+    return { name, type: type };
 }
 
 function getVariable(node: ts.VariableStatement): Var {
@@ -340,39 +354,101 @@ function getVariable(node: ts.VariableStatement): Var {
     throw new Error("Unsupported variable type: " + ts.SyntaxKind[decl.type.kind]);
 }
 
-function addArgument(bloc: Blockly.Block, arg: Argument) {
+function addArgument(bloc: Blockly.Block, arg: Argument, addLabel: boolean) {
+    let input;
     switch (arg.type.kind) {
     case "simple":
-        bloc.appendValueInput(arg.name)
-            .setCheck(simpleCheck(arg.type.type as string))
-            .appendField(arg.name);
+        input = bloc
+            .appendValueInput(arg.name)
+            .setCheck(simpleCheck(arg.type.type as string));
         break;
     case "promise": case "array": case "object":
-        bloc.appendValueInput(arg.name)
-            .setCheck(arg.type.type as string)
-            .appendField(arg.name);
+        input = bloc
+            .appendValueInput(arg.name)
+            .setCheck(arg.type.type as string);
         break;
     case "function":
-        bloc.appendStatementInput(arg.name)
-            .setCheck("Function")
-            .appendField(arg.name);
+        input = bloc
+            .appendStatementInput(arg.name)
+            .setCheck("Function");
         break;
-    case "str_enum":
-        bloc.appendDummyInput()
-            .appendField(arg.name)
-            .appendField(new Blockly.FieldDropdown(
-                (arg.type.type as string[]).map((value) => { return [value, value]; }),
-                undefined
-            ), arg.name);
-        break
+    case "str_enum": {
+        let i = bloc.appendDummyInput()
+        if (addLabel) {
+            i.appendField(arg.name);
+        }
+        i.appendField(new Blockly.FieldDropdown(
+            (arg.type.type as string[]).map((value) => { return [value, value]; }),
+            undefined
+        ), arg.name);
+    } break;
     case "literal":
-        console.log(arg.type.type);
         bloc.appendDummyInput()
             .appendField((arg.type.type as Literal).value);
         break;
     default:
         throw new Error("Unsupported type: " + arg.type.kind);
     }
+
+    if (addLabel && input) {
+        input.appendField(arg.name);
+    }
+}
+
+enum SegmentKind {
+    Text,
+    Input,
+    Newline
+}
+
+type ConfigSegment = {
+    kind: SegmentKind;
+    value: string;
+}
+
+function parseBlockConf(conf: string): ConfigSegment[] {
+    /**
+     * Example config:
+     * #jacly Configure adc\nPin {pin}\nAttenuation {attenuation}
+     */
+    let segments: ConfigSegment[] = [];
+    conf = conf.trim();
+    conf = conf.slice(6); // Remove #jacly
+    let start = 0;
+    let inBrackets = false;
+    for (let i = 0; i < conf.length; i++) {
+        if (conf[i] === "{") {
+            if (inBrackets) {
+                throw new Error("Nested brackets are not supported");
+            }
+            if (start !== i) {
+                segments.push({ kind: SegmentKind.Text, value: conf.slice(start, i) });
+            }
+            start = i + 1;
+            inBrackets = true;
+        }
+        else if (conf[i] === "}") {
+            if (!inBrackets) {
+                throw new Error("Unmatched closing bracket");
+            }
+            segments.push({ kind: SegmentKind.Input, value: conf.slice(start, i) });
+            start = i + 1;
+            inBrackets = false;
+        }
+        else if (conf[i] === "\n") {
+            if (start !== i) {
+                segments.push({ kind: SegmentKind.Text, value: conf.slice(start, i) });
+            }
+            segments.push({ kind: SegmentKind.Newline, value: "" });
+            start = i + 1;
+        }
+    }
+
+    if (start !== conf.length) {
+        segments.push({ kind: SegmentKind.Text, value: conf.slice(start) });
+    }
+
+    return segments;
 }
 
 function addGlobalFunctionBlock(blocks: BlockDefinition[], func: Func) {
@@ -380,11 +456,52 @@ function addGlobalFunctionBlock(blocks: BlockDefinition[], func: Func) {
     const block: BlockDefinition = {
         type: uname,
         init: (bloc) => {
-            bloc.appendDummyInput()
-                .appendField(func.name);
-            for (let arg of func.type.args) {
-                addArgument(bloc, arg);
+            if (func.type.blockDesign === undefined) {
+                bloc.appendDummyInput()
+                    .appendField(func.name);
+                for (let arg of func.type.args) {
+                    addArgument(bloc, arg, true);
+                }
             }
+            else {
+                bloc.setInputsInline(true);
+                let conf = parseBlockConf(func.type.blockDesign);
+                let args = new Set<string>();
+                for (let arg of func.type.args) {
+                    args.add(arg.name);
+                }
+                for (let seg of conf) {
+                    switch (seg.kind) {
+                    case SegmentKind.Text:
+                        bloc.appendDummyInput()
+                            .appendField(seg.value);
+                        break;
+                    case SegmentKind.Input: {
+                        let arg;
+                        for (let a of func.type.args) {
+                            if (a.name === seg.value) {
+                                arg = a;
+                                break;
+                            }
+                        }
+                        if (arg === undefined) {
+                            throw new Error("Argument not found: " + seg.value);
+                        }
+                        else {
+                            args.delete(arg.name);
+                        }
+                        addArgument(bloc, arg, false);
+                    } break;
+                    case SegmentKind.Newline:
+                        bloc.appendEndRowInput();
+                        break;
+                    }
+                }
+                if (args.size > 0) {
+                    console.debug(args);
+                }
+            }
+
             bloc.setNextStatement(true);
             bloc.setPreviousStatement(true);
             if (!(func.type.returnType.kind === "simple" && func.type.returnType.type === "void")) {
