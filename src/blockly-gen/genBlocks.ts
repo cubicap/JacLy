@@ -4,13 +4,22 @@ import { BlockDefinition } from "./types";
 import { javascriptGenerator, JavascriptGenerator } from "blockly/javascript";
 
 
+const existingBlocks: Record<string, number> = {};
+
+function getUniqueName(name: string): string {
+    let count = existingBlocks[name] ?? 0;
+    existingBlocks[name] = count + 1;
+    return count === 0 ? name : `${name}_${count}`;
+}
+
+
 function getAst(dts: string): ts.SourceFile {
     return ts.createSourceFile("test.d.ts", dts, ts.ScriptTarget.ES2020);
 }
 
 type Type = {
-    kind: "simple" | "promise" | "array" | "object" | "function";
-    type: string | Type | ObjectType | FuncType
+    kind: "simple" | "promise" | "array" | "object" | "function" | "literal" | "str_enum";
+    type: string | Type | Type[] | ObjectType | FuncType | Literal | string[];
 }
 
 type Property = {
@@ -25,6 +34,11 @@ type ObjectType = {
 type FuncType = {
     args: Argument[];
     returnType: Type;
+};
+
+type Literal = {
+    kind: "string" | "number" | "boolean";
+    value: string;
 };
 
 type Argument = {
@@ -122,17 +136,7 @@ function getTypeReference(node: ts.TypeReferenceNode): Type {
 }
 
 function getTypeFunction(node: ts.SignatureDeclaration): Type {
-    const args: Argument[] = [];
-    node.parameters.forEach(() => {
-        throw new Error("Functions with parameters are not supported");
-    });
-
-    let returnType = simple("void");
-    if (node.type !== undefined) {
-        returnType = getType(node.type);
-    }
-
-    return { kind: "function", type: { args, returnType } };
+    return { kind: "function", type: getFunctionSignature(node) };
 }
 
 function getTypeProperty(node: ts.PropertySignature): Property {
@@ -190,6 +194,54 @@ function getTypeLiteral(node: ts.TypeLiteralNode): ObjectType {
     return { properties };
 }
 
+function getStringLiteral(node: ts.StringLiteral): string {
+    return node.text;
+}
+
+function getTypeUnionType(node: ts.UnionTypeNode): Type {
+    const strings: string[] = [];
+    node.types.forEach((type) => {
+        if (type.kind !== ts.SyntaxKind.LiteralType) {
+            throw new Error("Type literal member is not a literal type");
+        }
+        const lit = type as ts.LiteralTypeNode;
+        if (lit.literal.kind !== ts.SyntaxKind.StringLiteral) {
+            throw new Error("Type literal member is not a string literal");
+        }
+        strings.push(getStringLiteral(lit.literal as ts.StringLiteral));
+    });
+
+    return { kind: "str_enum", type: strings };
+}
+
+function getLiteralType(node: ts.LiteralTypeNode): Type {
+    if (node.literal.kind === ts.SyntaxKind.StringLiteral) {
+        return { kind: "literal", type: {
+            kind: "string",
+            value: getStringLiteral(node.literal as ts.StringLiteral)
+        }};
+    }
+    if (node.literal.kind === ts.SyntaxKind.NumericLiteral) {
+        return { kind: "literal", type: {
+            kind: "number",
+            value: (node.literal as ts.NumericLiteral).text
+        }};
+    }
+    if (node.literal.kind === ts.SyntaxKind.TrueKeyword) {
+        return { kind: "literal", type: {
+            kind: "boolean",
+            value: "true"
+        }};
+    }
+    if (node.literal.kind === ts.SyntaxKind.FalseKeyword) {
+        return { kind: "literal", type: {
+            kind: "boolean",
+            value: "false"
+        }};
+    }
+    throw new Error("Unsupported literal type: " + ts.SyntaxKind[node.literal.kind]);
+}
+
 function getType(node: ts.TypeNode): Type {
     switch (node.kind) {
     case ts.SyntaxKind.NumberKeyword:
@@ -203,11 +255,13 @@ function getType(node: ts.TypeNode): Type {
     case ts.SyntaxKind.AnyKeyword:
         return simple("any");
     case ts.SyntaxKind.LiteralType:
-        return simple((node as ts.LiteralTypeNode).literal.getText());
+        return getLiteralType(node as ts.LiteralTypeNode);
     case ts.SyntaxKind.TypeReference:
         return getTypeReference(node as ts.TypeReferenceNode);
     case ts.SyntaxKind.FunctionType:
         return getTypeFunction(node as ts.FunctionTypeNode);
+    case ts.SyntaxKind.UnionType:
+        return getTypeUnionType(node as ts.UnionTypeNode);
     default:
         throw new Error("Unsupported type: " + ts.SyntaxKind[node.kind]);
     }
@@ -287,7 +341,6 @@ function getVariable(node: ts.VariableStatement): Var {
 }
 
 function addArgument(bloc: Blockly.Block, arg: Argument) {
-    console.log(arg);
     switch (arg.type.kind) {
     case "simple":
         bloc.appendValueInput(arg.name)
@@ -304,18 +357,31 @@ function addArgument(bloc: Blockly.Block, arg: Argument) {
             .setCheck("Function")
             .appendField(arg.name);
         break;
+    case "str_enum":
+        bloc.appendDummyInput()
+            .appendField(arg.name)
+            .appendField(new Blockly.FieldDropdown(
+                (arg.type.type as string[]).map((value) => { return [value, value]; }),
+                undefined
+            ), arg.name);
+        break
+    case "literal":
+        console.log(arg.type.type);
+        bloc.appendDummyInput()
+            .appendField((arg.type.type as Literal).value);
+        break;
     default:
         throw new Error("Unsupported type: " + arg.type.kind);
     }
 }
 
 function addGlobalFunctionBlock(blocks: BlockDefinition[], func: Func) {
-    let name = func.name;
+    let uname = getUniqueName(func.name);
     const block: BlockDefinition = {
-        type: name,
+        type: uname,
         init: (bloc) => {
             bloc.appendDummyInput()
-                .appendField(name);
+                .appendField(func.name);
             for (let arg of func.type.args) {
                 addArgument(bloc, arg);
             }
@@ -329,7 +395,7 @@ function addGlobalFunctionBlock(blocks: BlockDefinition[], func: Func) {
     };
     blocks.push(block);
 
-    javascriptGenerator.forBlock[name] = (block: Blockly.Block, generator: JavascriptGenerator) => {
+    javascriptGenerator.forBlock[uname] = (block: Blockly.Block, generator: JavascriptGenerator) => {
         let args: string[] = [];
         for (let arg of func.type.args) {
             switch (arg.type.kind) {
@@ -355,25 +421,44 @@ function addGlobalFunctionBlock(blocks: BlockDefinition[], func: Func) {
                 code += "}";
                 args.push(code);
             } break;
+            case "str_enum":
+                args.push(`"${block.getFieldValue(arg.name)}"`);
+                break;
+            case "literal":
+                switch ((arg.type.type as Literal).kind) {
+                case "number":
+                    args.push((arg.type.type as Literal).value);
+                break;
+                case "boolean":
+                    args.push((arg.type.type as Literal).value);
+                break;
+                case "string":
+                    args.push(`"${(arg.type.type as Literal).value}"`);
+                break;
+                }
+            break;
+            default:
+                throw new Error("Unsupported type: " + arg.type.kind);
             }
         }
-        return `${name}(${args.join(", ")});\n`;
+        return `${func.name}(${args.join(", ")});\n`;
     };
 }
 
 function addGlobalSimpleBlock(blocks: BlockDefinition[], name: string, type: string) {
+    let uname = getUniqueName(name);
     const block: BlockDefinition = {
-        type: name,
+        type: uname,
         init: (bloc) => {
             bloc.appendDummyInput()
                 .appendField(name);
-            bloc.setOutput(true, type);
+            bloc.setOutput(true, simpleName(type));
             bloc.setColour("404040");
         }
     };
     blocks.push(block);
 
-    javascriptGenerator.forBlock[name] = (block: Blockly.Block, generator: JavascriptGenerator) => {
+    javascriptGenerator.forBlock[uname] = (block: Blockly.Block, generator: JavascriptGenerator) => {
         return `(${name})`;
     };
 }
@@ -395,7 +480,6 @@ function addGlobalObjectBlock(blocks: BlockDefinition[], obj: ObjectType, prefix
     for (let prop of obj.properties) {
         switch (prop.type.kind) {
         case "function":
-            console.log(prop.type);
             addGlobalFunctionBlock(blocks, {
                 name: prefix + "." + prop.name,
                 type: prop.type.type as FuncType
@@ -431,7 +515,6 @@ function getModule(node: ts.ModuleDeclaration): Module {
             members.push(getVariable(member as ts.VariableStatement));
         }
         else if (member.kind === ts.SyntaxKind.FunctionDeclaration) {
-            console.log(member);
             const func = getFunction(member as ts.FunctionDeclaration);
             members.push({
                 name: func.name,

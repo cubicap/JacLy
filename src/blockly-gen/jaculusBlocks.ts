@@ -41,6 +41,60 @@ declare const console: {
 }
 `;
 
+const gpioDts = `
+declare module "gpio" {
+    type Mode = number;
+
+    const PinMode: {
+        readonly DISABLE: Mode,
+        readonly OUTPUT: Mode,
+        readonly INPUT: Mode,
+        readonly INPUT_PULLUP: Mode,
+        readonly INPUT_PULLDOWN: Mode,
+    };
+
+    interface EventInfo {
+        timestamp: Timestamp;
+    }
+
+    /**
+     * Configure the given pin.
+     * @param pin The pin to configure.
+     * @param mode The mode to configure the pin in.
+     */
+    function pinMode(pin: number, mode: Mode): void;
+
+    /**
+     * Write digital value to the given pin.
+     * @param pin The pin to write to.
+     * @param value The value to write.
+     */
+    function write(pin: number, value: number): void;
+
+    /**
+     * Read digital value from the given pin.
+     * @param pin The pin to read from.
+     * @returns The value of the pin (0 or 1).
+     */
+    function read(pin: number): number;
+
+    /**
+     * Set event handler for the given pin.
+     * @param event The event to handle.
+     * @param pin The pin to handle the event for.
+     * @param callback The callback to call when the event occurs.
+     */
+    function on(event: "rising" | "falling" | "change", pin: number, callback: (info: EventInfo) => void): void;
+
+    /**
+     * Remove event handler for the given pin.
+     * @param event The event to remove.
+     * @param pin The pin to remove the event handler for.
+     */
+    function off(event: "rising" | "falling" | "change", pin: number): void;
+}
+`;
+
 const ledcDts = `
 declare module "ledc" {
     /**
@@ -88,6 +142,92 @@ declare module "ledc" {
 }
 `;
 
+const simpleRadioDts = `
+declare module "simpleradio" {
+
+    interface PacketInfo {
+        group: number;
+        address: string;
+        rssi: number;
+    }
+
+    /**
+     * Initialize the radio.
+     * @param group The radio group to use.
+     */
+    function begin(group: number): void;
+
+    /**
+     * Set the radio group.
+     * @param group The radio group to use, between 0 and 15 inclusive.
+     */
+    function setGroup(group: number): void;
+
+    /**
+     * Get current radio group
+     * @returns ID of the current group
+     */
+    function group(): number;
+
+    /**
+     * Get the local device address.
+     * @returns the local device address. Only works after begin() is called.
+     */
+    function address(): string;
+
+    /**
+     * Send a string.
+     * @param str The string to send.
+     */
+    function sendString(str: string): void;
+
+    /**
+     * Send a number.
+     * @param num The number to send.
+     */
+    function sendNumber(num: number): void;
+
+    /**
+     * Send a key-value pair.
+     * @param key The key to send.
+     * @param value The number to send.
+     */
+    function sendKeyValue(key: string, value: number): void;
+
+    /**
+     * Register a callback for a packet type.
+     * @param type The packet type to register for.
+     * @param callback The callback to register.
+     */
+    function on(type: "number", callback: (num: number, info: PacketInfo) => void): void;
+
+    /**
+     * Register a callback for a packet type.
+     * @param type The packet type to register for.
+     * @param callback The callback to register.
+     */
+    function on(type: "string", callback: (str: string, info: PacketInfo) => void): void;
+
+    /**
+     * Register a callback for a packet type.
+     * @param type The packet type to register for.
+     * @param callback The callback to register.
+     */
+    function on(type: "keyvalue", callback: (key: string, value: number, info: PacketInfo) => void): void;
+
+    /**
+     * Unregister a callback for a packet type.
+     * @param type The packet type to unregister for.
+     */
+    function off(type: "number" | "string" | "keyvalue"): void;
+
+    /**
+     * Stop the radio.
+     */
+    function end(): void;
+}
+`;
+
 const timerDts = `
 /**
  * Returns a promise that resolves after the specified time.
@@ -120,6 +260,14 @@ declare function clearTimeout(id: number): void;
  * @param id The identifier of the interval to cancel.
  */
 declare function clearInterval(id: number): void;
+`;
+
+const miscDts = `
+/**
+ * Exits the current program.
+ * @param code The exit code to use.
+ */
+declare function exit(code?: number): void;
 `;
 
 
@@ -156,11 +304,33 @@ export function getJaculusToolbos() {
         },
         {
             kind: "category",
+            name: "GPIO",
+            toolboxitemid: "gpio",
+            colour: "#FFD500",
+            blocks: getBlocks(gpioDts)
+        },
+        {
+            kind: "category",
             name: "LEDC",
             toolboxitemid: "ledc",
             colour: "#FFD500",
             blocks: getBlocks(ledcDts)
         },
+        {
+            kind: "category",
+            name: "SimpleRadio",
+            toolboxitemid: "simpleradio",
+            colour: "#FFD500",
+            blocks: getBlocks(simpleRadioDts)
+        },
+        {
+            kind: "category",
+            name: "Misc",
+            toolboxitemid: "misc",
+            colour: "#FFD500",
+            blocks: getBlocks(miscDts)
+        },
+        { kind: "sep" },
         {
             kind: "category",
             name: "Imports",
