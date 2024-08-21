@@ -5,11 +5,12 @@ import { svgResize } from "blockly";
 import { getJaculusToolbos as getJaculusToolbox } from "../blockly-gen/jaculusBlocks";
 
 export interface BlocklyPaneProps {  // eslint-disable-line @typescript-eslint/no-empty-interface
-
+    onChange?: (code: string) => void;
+    defaultJson?: string;
 }
 
 const toolbox = getJaculusToolbox();
-const defaultJson = "{}";
+const defaultJson = {};
 
 export class BlocklyPane extends Component<BlocklyPaneProps> {
     private blocklyEditor: React.RefObject<HTMLDivElement> = React.createRef();
@@ -59,7 +60,8 @@ export class BlocklyPane extends Component<BlocklyPaneProps> {
                     }
                 }}
                 toolboxConfiguration={toolbox}
-                initialJson={{ defaultJson }}
+                initialJson={ this.props.defaultJson ? JSON.parse(this.props.defaultJson) : defaultJson }
+                onJsonChange={ (json) => { this.props.onChange?.(JSON.stringify(json)); } }
             />
         );
     }
