@@ -576,7 +576,8 @@ function addGlobalSimpleBlock(blocks: BlockDefinition[], name: string, type: str
     blocks.push(block);
 
     javascriptGenerator.forBlock[uname] = (block: Blockly.Block, generator: JavascriptGenerator) => {
-        return `(${name})`;
+        console.log("generate simple block for", uname);
+        return [`(${name})`, 0 ];
     };
 }
 
